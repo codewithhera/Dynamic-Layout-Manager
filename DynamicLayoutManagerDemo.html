@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Dynamic Layout Manager Demo</title>
+    <style>
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        height: 100vh;
+        overflow: hidden;
+      }
+
+      .container {
+        display: flex;
+        height: 100vh;
+        gap: 1px;
+      }
+
+      .sidebar {
+        width: 280px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .sidebar-header {
+        padding: 20px;
+        background: linear-gradient(135deg, #ff6b6b, #feca57);
+        color: white;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .sidebar-header h2 {
+        font-size: 1.4rem;
+        margin-bottom: 5px;
+        font-weight: 600;
+      }
+
+      .sidebar-header p {
+        font-size: 0.9rem;
+        opacity: 0.9;
+      }
+
+      .components-section {
+        padding: 20px;
+        flex: 1;
+      }
+
+      .components-title {
+        font-size: 1.1rem;
+        font-weight: 600;
+        color: #333;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .components-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 12px;
+        margin-bottom: 20px;
+      }
+
+      .draggable-component {
+        padding: 12px;
+        border-radius: 12px;
+        cursor: grab;
+        user-select: none;
+        transition: all 0.2s ease;
+        text-align: center;
+        font-weight: 500;
+        font-size: 0.9rem;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        position: relative;
+        overflow: hidden;
+      }
+
+      .draggable-component::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(
+          90deg,
+          transparent,
+          rgba(255, 255, 255, 0.3),
+          transparent
+        );
+        transition: left 0.5s;
+      }
+
+      .draggable-component:hover::before {
+        left: 100%;
+      }
+
+      .draggable-component:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 20px rgba(0, 0, 0, 0.2);
+      }
+
+      .draggable-component:active {
+        cursor: grabbing;
+        transform: scale(0.98);
+      }
+
+      .btn-primary {
+        background: linear-gradient(135deg, #667eea, #764ba2);
+        color: white;
+      }
+      .btn-success {
+        background: linear-gradient(135deg, #56ab2f, #a8e6cf);
+        color: white;
+      }
+      .btn-warning {
+        background: linear-gradient(135deg, #f093fb, #f5576c);
+        color: white;
+      }
+      .btn-info {
+        background: linear-gradient(135deg, #4facfe, #00f2fe);
+        color: white;
+      }
+      .text-element {
+        background: linear-gradient(135deg, #ffecd2, #fcb69f);
+        color: #333;
+      }
+      .image-placeholder {
+        background: linear-gradient(135deg, #a8edea, #fed6e3);
+        color: #333;
+      }
+
+      .main-content {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .top-bar {
+        height: 60px;
+        background: rgba(255, 255, 255, 0.95);
+        backdrop-filter: blur(10px);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 0 20px;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      }
+
+      .mode-toggle {
+        display: flex;
+        background: rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        padding: 4px;
+      }
+
+      .mode-btn {
+        padding: 8px 16px;
+        border: none;
+        background: transparent;
+        border-radius: 6px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        font-weight: 500;
+      }
+
+      .mode-btn.active {
+        background: white;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        color: #333;
+      }
+
+      .workspace {
+        flex: 1;
+        display: flex;
+      }
+
+      .design-area,
+      .preview-area {
+        flex: 1;
+        position: relative;
+        background: rgba(255, 255, 255, 0.9);
+        backdrop-filter: blur(10px);
+      }
+
+      .design-area {
+        border-right: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .area-header {
+        height: 40px;
+        background: rgba(0, 0, 0, 0.05);
+        display: flex;
+        align-items: center;
+        padding: 0 15px;
+        font-weight: 600;
+        font-size: 0.9rem;
+        color: #555;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+      }
+
+      .drop-zone {
+        position: absolute;
+        top: 40px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        overflow: auto;
+        padding: 20px;
+      }
+
+      .drop-zone.dragover {
+        background: rgba(102, 126, 234, 0.1);
+        border: 2px dashed #667eea;
+      }
+
+      .dropped-element {
+        position: absolute;
+        cursor: move;
+        border-radius: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+        transition: all 0.2s ease;
+      }
+
+      .dropped-element:hover {
+        transform: scale(1.02);
+        z-index: 10;
+      }
+
+      .dropped-element.dragging {
+        opacity: 0.8;
+        transform: rotate(2deg);
+        z-index: 1000;
+      }
+
+      /* Flexbox visualization */
+      .flex-container > div {
+        border: 2px dashed #ff6b6b !important;
+        background: rgba(255, 107, 107, 0.1) !important;
+      }
+
+      .flex-row {
+        border: 2px dashed #667eea !important;
+        background: rgba(102, 126, 234, 0.05) !important;
+        margin: 2px !important;
+        padding: 4px !important;
+        border-radius: 6px !important;
+        position: relative;
+      }
+
+      .flex-row::before {
+        content: "Flex Row";
+        position: absolute;
+        top: -2px;
+        left: 4px;
+        background: #667eea;
+        color: white;
+        font-size: 10px;
+        padding: 2px 6px;
+        border-radius: 0 0 4px 4px;
+        font-weight: 500;
+      }
+
+      /* Interact.js specific styles */
+      .dropped-element {
+        touch-action: none;
+        user-select: none;
+      }
+
+      .dropped-element.dragging {
+        opacity: 0.8;
+        transform: scale(1.05);
+        z-index: 1000;
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+      }
+
+      .empty-state {
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        text-align: center;
+        color: #888;
+        pointer-events: none;
+      }
+
+      .empty-state svg {
+        width: 64px;
+        height: 64px;
+        margin-bottom: 16px;
+        opacity: 0.5;
+      }
+
+      .status-indicator {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        font-size: 0.9rem;
+        color: #666;
+      }
+
+      .status-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #4caf50;
+        animation: pulse 2s infinite;
+      }
+
+      @keyframes pulse {
+        0% {
+          transform: scale(1);
+          opacity: 1;
+        }
+        50% {
+          transform: scale(1.1);
+          opacity: 0.7;
+        }
+        100% {
+          transform: scale(1);
+          opacity: 1;
+        }
+      }
+
+      @media (max-width: 768px) {
+        .container {
+          flex-direction: column;
+        }
+
+        .sidebar {
+          width: 100%;
+          height: 200px;
+        }
+
+        .workspace {
+          flex-direction: column;
+        }
+
+        .components-grid {
+          grid-template-columns: repeat(4, 1fr);
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="sidebar">
+        <div class="sidebar-header">
+          <h2>🎨 Layout Builder</h2>
+          <p>Drag components to design area</p>
+        </div>
+        <div class="components-section">
+          <div class="components-title"><span>🧩</span> Components</div>
+          <div class="components-grid">
+            <div
+              class="draggable-component btn-primary"
+              draggable="true"
+              data-type="button"
+            >
+              📱 Button
+            </div>
+            <div
+              class="draggable-component text-element"
+              draggable="true"
+              data-type="text"
+            >
+              📝 Text
+            </div>
+            <div
+              class="draggable-component btn-success"
+              draggable="true"
+              data-type="card"
+            >
+              🎴 Card
+            </div>
+            <div
+              class="draggable-component image-placeholder"
+              draggable="true"
+              data-type="image"
+            >
+              🖼️ Image
+            </div>
+            <div
+              class="draggable-component btn-warning"
+              draggable="true"
+              data-type="input"
+            >
+              ⌨️ Input
+            </div>
+            <div
+              class="draggable-component btn-info"
+              draggable="true"
+              data-type="badge"
+            >
+              🏷️ Badge
+            </div>
+          </div>
+          <div class="status-indicator">
+            <div class="status-dot"></div>
+            <span>Dynamic Layout Ready</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="main-content">
+        <div class="top-bar">
+          <h1 style="font-size: 1.3rem; color: #333; font-weight: 600">
+            Dynamic Layout Manager Demo
+          </h1>
+          <div class="mode-toggle">
+            <button class="mode-btn active" data-mode="split">
+              Split View
+            </button>
+            <button class="mode-btn" data-mode="design">Design Only</button>
+            <button class="mode-btn" data-mode="preview">Preview Only</button>
+          </div>
+        </div>
+
+        <div class="workspace">
+          <div class="design-area">
+            <div class="area-header">
+              <span>🎯 Design Area (Absolute Positioning)</span>
+            </div>
+            <div class="drop-zone" id="designArea">
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                  />
+                </svg>
+                <h3>Drop Components Here</h3>
+                <p>Drag and drop components from the sidebar</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="preview-area">
+            <div class="area-header">
+              <span>⚡ Live Preview (Flex Layout)</span>
+            </div>
+            <div class="drop-zone" id="previewArea">
+              <div class="empty-state">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                  <path
+                    d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"
+                  />
+                </svg>
+                <h3>Auto-Generated Layout</h3>
+                <p>Flexbox layout appears here automatically</p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Include interact.js for smooth dragging -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/interact.js/1.10.19/interact.min.js"></script>
+    <script>
+      // Your DynamicLayoutManager class
+      class DynamicLayoutManager {
+        constructor(targetContainer) {
+          this.targetContainer = targetContainer;
+          this.allElements = [];
+          this.flexRows = [];
+          this.isMobile = window.innerWidth <= 458;
+          this.originalStyles = new Map();
+        }
+
+        initialize() {
+          this.allElements = this._getAllPositionedElements(
+            this.targetContainer
+          );
+          this.flexRows = this._groupIntoFlexRows(this.allElements);
+          this._setupResizeObserver();
+        }
+
+        convertToDynamicLayout() {
+          this._clearContainer();
+          this._applyFlexLayout();
+        }
+
+        _getAllPositionedElements(container) {
+          const allChildNodes = Array.from(container.children);
+
+          return allChildNodes.map((element) => {
+            this.originalStyles.set(element, {
+              position: element.style.position,
+              width: element.style.width,
+              height: element.style.height,
+              margin: element.style.margin,
+              display: element.style.display,
+            });
+
+            const rect = element.getBoundingClientRect();
+            return {
+              element,
+              top: rect.top,
+              bottom: rect.bottom,
+              left: rect.left,
+              right: rect.right,
+              width: rect.width,
+              height: rect.height,
+              centerX: rect.left + rect.width / 2,
+              centerY: rect.top + rect.height / 2,
+              originalWidth: element.style.width || `${rect.width}px`,
+              originalHeight: element.style.height || `${rect.height}px`,
+            };
+          });
+        }
+
+        _groupIntoFlexRows(elements) {
+          if (elements.length === 0) return [];
+
+          elements.sort((a, b) => a.top - b.top);
+          const rows = [];
+          let currentRow = [elements[0]];
+
+          for (let i = 1; i < elements.length; i++) {
+            const prevElement = elements[i - 1];
+            const currentElement = elements[i];
+
+            const tolerance = this.isMobile ? 20 : 10;
+            if (currentElement.top < prevElement.bottom + tolerance) {
+              currentRow.push(currentElement);
+            } else {
+              rows.push({
+                elements: currentRow.sort((a, b) => a.left - b.left),
+                top: Math.min(...currentRow.map((el) => el.top)),
+                bottom: Math.max(...currentRow.map((el) => el.bottom)),
+              });
+              currentRow = [currentElement];
+            }
+          }
+
+          rows.push({
+            elements: currentRow.sort((a, b) => a.left - b.left),
+            top: Math.min(...currentRow.map((el) => el.top)),
+            bottom: Math.max(...currentRow.map((el) => el.bottom)),
+          });
+
+          return rows;
+        }
+
+        _clearContainer() {
+          this.targetContainer.innerHTML = "";
+          this.targetContainer.style.display = "flex";
+          this.targetContainer.style.flexDirection = "column";
+          this.targetContainer.style.gap = this.isMobile ? "8px" : "10px";
+          this.targetContainer.style.alignItems = "flex-start";
+          this.targetContainer.style.width = "100%";
+          this.targetContainer.style.overflowX = "hidden";
+        }
+
+        _applyFlexLayout() {
+          this.flexRows.forEach((row, rowIndex) => {
+            const rowDiv = document.createElement("div");
+            rowDiv.className = "flex-row";
+            rowDiv.style.display = "flex";
+            rowDiv.style.alignItems = "flex-start";
+
+            if (this.isMobile) {
+              rowDiv.style.flexDirection = "column";
+              rowDiv.style.width = "100%";
+              rowDiv.style.gap = "8px";
+            } else {
+              rowDiv.style.flexWrap = "wrap";
+              rowDiv.style.minWidth = "0";
+              rowDiv.style.flexGrow = "1";
+
+              const rowGap = this._calculateRowGap(row.elements);
+              const rowLeftOffset = this._calculateRowLeftOffset(row.elements);
+              rowDiv.style.paddingLeft = `${rowLeftOffset}px`;
+              rowDiv.style.gap = `${rowGap}px`;
+            }
+
+            row.elements.forEach((positionedElement) => {
+              const element = positionedElement.element.cloneNode(true);
+              element.style.position = "static";
+              element.style.margin = "0";
+              element.style.flexShrink = "0";
+
+              if (this.isMobile) {
+                element.style.width = "100%";
+                element.style.maxWidth = "100%";
+                element.style.height = "auto";
+                element.style.aspectRatio = `${positionedElement.width}/${positionedElement.height}`;
+              } else {
+                element.style.width = positionedElement.originalWidth;
+                element.style.height = positionedElement.originalHeight;
+                element.style.minWidth = "0";
+
+                const marginTop = this._calculateElementMarginTop(
+                  row.elements,
+                  positionedElement
+                );
+                element.style.marginTop = `${marginTop}px`;
+              }
+
+              rowDiv.appendChild(element);
+            });
+
+            if (rowIndex > 0) {
+              const previousRow = this.flexRows[rowIndex - 1];
+              const verticalGap = this._calculateVerticalGap(previousRow, row);
+              rowDiv.style.marginTop = `${
+                this.isMobile ? Math.min(verticalGap, 16) : verticalGap
+              }px`;
+            }
+
+            this.targetContainer.appendChild(rowDiv);
+          });
+        }
+
+        _setupResizeObserver() {
+          const resizeObserver = new ResizeObserver((entries) => {
+            for (let entry of entries) {
+              const newIsMobile = entry.contentRect.width <= 450;
+              if (newIsMobile !== this.isMobile) {
+                this.isMobile = newIsMobile;
+                this.convertToDynamicLayout();
+              }
+            }
+          });
+
+          resizeObserver.observe(this.targetContainer);
+        }
+
+        _calculateRowGap(elements) {
+          let totalGap = 0;
+          let gapCount = 0;
+
+          for (let i = 1; i < elements.length; i++) {
+            const gap = elements[i].left - elements[i - 1].right;
+            if (gap > 0) {
+              totalGap += gap;
+              gapCount++;
+            }
+          }
+
+          return gapCount > 0 ? Math.round(totalGap / gapCount) : 10;
+        }
+
+        _calculateElementMarginTop(elements, positionedElement) {
+          const rowTop = Math.min(...elements.map((el) => el.top));
+          return positionedElement.top - rowTop;
+        }
+
+        _calculateRowLeftOffset(elements) {
+          const firstElement = elements[0];
+          const containerRect = this.targetContainer.getBoundingClientRect();
+          return Math.max(0, firstElement.left - containerRect.left);
+        }
+
+        _calculateVerticalGap(previousRow, currentRow) {
+          const previousRowBottom = Math.max(
+            ...previousRow.elements.map((el) => el.bottom)
+          );
+          const currentRowTop = Math.min(
+            ...currentRow.elements.map((el) => el.top)
+          );
+          return Math.max(0, currentRowTop - previousRowBottom);
+        }
+
+        resetLayout() {
+          this.targetContainer.innerHTML = "";
+          this.allElements.forEach(({ element }) => {
+            const originalStyle = this.originalStyles.get(element);
+            if (originalStyle) {
+              Object.assign(element.style, originalStyle);
+            }
+            this.targetContainer.appendChild(element);
+          });
+        }
+      }
+
+      // Demo App Logic
+      class LayoutDemo {
+        constructor() {
+          this.designArea = document.getElementById("designArea");
+          this.previewArea = document.getElementById("previewArea");
+          this.layoutManager = new DynamicLayoutManager(this.previewArea);
+          this.draggedElement = null;
+          this.elementCounter = 0;
+
+          this.init();
+        }
+
+        init() {
+          this.setupDragAndDrop();
+          this.setupModeToggle();
+        }
+
+        setupDragAndDrop() {
+          // Draggable components from sidebar
+          document
+            .querySelectorAll(".draggable-component")
+            .forEach((component) => {
+              component.addEventListener("dragstart", (e) => {
+                this.draggedElement = {
+                  type: e.target.dataset.type,
+                  content: e.target.textContent,
+                  className: e.target.className,
+                };
+              });
+            });
+
+          // Drop zone setup for creating new elements
+          this.designArea.addEventListener("dragover", (e) => {
+            e.preventDefault();
+            this.designArea.classList.add("dragover");
+          });
+
+          this.designArea.addEventListener("dragleave", () => {
+            this.designArea.classList.remove("dragover");
+          });
+
+          this.designArea.addEventListener("drop", (e) => {
+            e.preventDefault();
+            this.designArea.classList.remove("dragover");
+
+            if (this.draggedElement) {
+              this.createElement(
+                e.clientX - this.designArea.getBoundingClientRect().left,
+                e.clientY - this.designArea.getBoundingClientRect().top
+              );
+            }
+          });
+        }
+
+        setupInteractDragging(element) {
+          // Use interact.js for smooth dragging of dropped elements
+          interact(element)
+            .draggable({
+              inertia: true,
+              modifiers: [
+                interact.modifiers.restrictRect({
+                  restriction: this.designArea,
+                  endOnly: true,
+                }),
+              ],
+              autoScroll: true,
+              listeners: {
+                start: (event) => {
+                  event.target.classList.add("dragging");
+                  // Show grouping hints
+                  this.showGroupingHints();
+                },
+                move: (event) => {
+                  const target = event.target;
+                  const x =
+                    (parseFloat(target.getAttribute("data-x")) || 0) + event.dx;
+                  const y =
+                    (parseFloat(target.getAttribute("data-y")) || 0) + event.dy;
+
+                  target.style.transform = `translate(${x}px, ${y}px)`;
+                  target.setAttribute("data-x", x);
+                  target.setAttribute("data-y", y);
+
+                  // Update grouping hints in real-time
+                  this.updateGroupingHints();
+                },
+                end: (event) => {
+                  event.target.classList.remove("dragging");
+                  // Hide grouping hints
+                  this.hideGroupingHints();
+                  // Update final position and preview
+                  this.finalizeElementPosition(event.target);
+                  this.updatePreview();
+                },
+              },
+            })
+            .on("doubletap", (event) => {
+              // Double tap to delete element
+              event.target.remove();
+              this.updatePreview();
+              if (
+                this.designArea.querySelectorAll(".dropped-element").length ===
+                0
+              ) {
+                this.showEmptyState(
+                  this.designArea,
+                  "Drop Components Here",
+                  "Drag and drop components from the sidebar"
+                );
+              }
+            });
+        }
+
+        finalizeElementPosition(element) {
+          // Convert transform to actual position
+          const x = parseFloat(element.getAttribute("data-x")) || 0;
+          const y = parseFloat(element.getAttribute("data-y")) || 0;
+
+          const currentLeft = parseFloat(element.style.left) || 0;
+          const currentTop = parseFloat(element.style.top) || 0;
+
+          element.style.left = currentLeft + x + "px";
+          element.style.top = currentTop + y + "px";
+          element.style.transform = "";
+          element.setAttribute("data-x", 0);
+          element.setAttribute("data-y", 0);
+        }
+
+        showGroupingHints() {
+          // Add visual hints for potential groupings
+          const elements = this.designArea.querySelectorAll(".dropped-element");
+          elements.forEach((el) => {
+            if (!el.classList.contains("dragging")) {
+              el.style.border = "2px dashed #ffa726";
+              el.style.background = "rgba(255, 167, 38, 0.1)";
+            }
+          });
+        }
+
+        updateGroupingHints() {
+          // Could implement real-time grouping visualization here
+          // For now, we'll keep it simple and update on drag end
+        }
+
+        hideGroupingHints() {
+          const elements = this.designArea.querySelectorAll(".dropped-element");
+          elements.forEach((el) => {
+            el.style.border = "";
+            el.style.background = "";
+          });
+        }
+
+        createElement(x, y) {
+          const element = document.createElement("div");
+          element.className = `dropped-element ${this.draggedElement.className}`;
+          element.textContent = this.draggedElement.content;
+          element.id = `element-${++this.elementCounter}`;
+
+          // Style the element
+          element.style.position = "absolute";
+          element.style.left = x + "px";
+          element.style.top = y + "px";
+          element.style.padding = "12px 20px";
+          element.style.minWidth = "100px";
+          element.style.minHeight = "40px";
+          element.style.fontSize = "14px";
+          element.style.fontWeight = "500";
+
+          // Add special styling based on type
+          switch (this.draggedElement.type) {
+            case "button":
+              element.style.border = "none";
+              element.style.cursor = "pointer";
+              break;
+            case "text":
+              element.style.fontSize = "16px";
+              element.textContent = "Sample Text Element";
+              break;
+            case "card":
+              element.style.padding = "20px";
+              element.style.minWidth = "200px";
+              element.style.minHeight = "120px";
+              element.textContent = "Card Content";
+              break;
+            case "image":
+              element.style.minWidth = "150px";
+              element.style.minHeight = "100px";
+              element.textContent = "🖼️ Image Placeholder";
+              break;
+            case "input":
+              element.textContent = "Input Field";
+              element.style.border = "2px solid #ddd";
+              break;
+            case "badge":
+              element.style.padding = "6px 12px";
+              element.style.fontSize = "12px";
+              element.textContent = "Badge";
+              break;
+          }
+
+          this.designArea.appendChild(element);
+
+          // Setup interact.js dragging for this element
+          this.setupInteractDragging(element);
+
+          this.hideEmptyState();
+          this.updatePreview();
+        }
+
+        updatePreview() {
+          // Clear existing preview
+          this.previewArea.innerHTML = "";
+
+          // Clone all elements from design area
+          const designElements =
+            this.designArea.querySelectorAll(".dropped-element");
+          if (designElements.length === 0) {
+            this.showEmptyState(
+              this.previewArea,
+              "Auto-Generated Layout",
+              "Flexbox layout appears here automatically"
+            );
+            return;
+          }
+
+          designElements.forEach((element) => {
+            const clone = element.cloneNode(true);
+            clone.classList.remove("dragging");
+            this.previewArea.appendChild(clone);
+          });
+
+          // Apply dynamic layout
+          this.layoutManager.initialize();
+          this.layoutManager.convertToDynamicLayout();
+        }
+
+        setupModeToggle() {
+          document.querySelectorAll(".mode-btn").forEach((btn) => {
+            btn.addEventListener("click", () => {
+              document
+                .querySelectorAll(".mode-btn")
+                .forEach((b) => b.classList.remove("active"));
+              btn.classList.add("active");
+
+              const mode = btn.dataset.mode;
+              const designArea = document.querySelector(".design-area");
+              const previewArea = document.querySelector(".preview-area");
+
+              switch (mode) {
+                case "split":
+                  designArea.style.display = "block";
+                  previewArea.style.display = "block";
+                  break;
+                case "design":
+                  designArea.style.display = "block";
+                  previewArea.style.display = "none";
+                  break;
+                case "preview":
+                  designArea.style.display = "none";
+                  previewArea.style.display = "block";
+                  break;
+              }
+            });
+          });
+        }
+
+        hideEmptyState() {
+          const emptyState = this.designArea.querySelector(".empty-state");
+          if (emptyState) {
+            emptyState.style.display = "none";
+          }
+        }
+
+        showEmptyState(container, title, description) {
+          const emptyState = document.createElement("div");
+          emptyState.className = "empty-state";
+          emptyState.innerHTML = `
+                    <svg viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                    </svg>
+                    <h3>${title}</h3>
+                    <p>${description}</p>
+                `;
+          container.appendChild(emptyState);
+        }
+      }
+
+      // Initialize the demo
+      document.addEventListener("DOMContentLoaded", () => {
+        new LayoutDemo();
+      });
+    </script>
+  </body>
+</html>
